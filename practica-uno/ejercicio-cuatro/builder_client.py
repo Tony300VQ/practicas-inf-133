@@ -28,7 +28,7 @@ patient_update2={
         "apellido": "García",
         "edad": 23,
         "genero":"Male",
-        "diagnostico":"Good",
+        "diagnostico":"Diabetes",
         "doctor":"Pedro Pérez"}
 response = requests.put(url+"/1", json=patient_update2, headers=headers)
 print(response.json())
@@ -37,10 +37,17 @@ print("////")
 response = requests.get(url)
 print(response.json())
 
-
-
+print("//////")
+response = requests.get(url+"?diagnostico=Diabetes")
+print(response.json())
+print("######")
+response = requests.get(url+"?doctor=Pedro Pérez")
+print(response.json())
+print("######")
+response = requests.get(url+"/109027")
+print(response.json())
+print("######")
 response = requests.delete(url + "/1")
 print(response.json())
-
 response = requests.get(url)
 print(response.json())

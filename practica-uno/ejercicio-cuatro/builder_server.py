@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-
+from urllib.parse import urlparse, parse_qs
 # Base de datos simulada de pizzas
 pacientes = {}
 
@@ -79,7 +79,12 @@ class HospitalService:
 
     def read_pacientes(self):
         return {index: patient.__dict__ for index, patient in pacientes.items()}
-
+    def read_pacientes_diagnostico(self,diagnostico):
+        return {index: patient.__dict__ for index, patient in pacientes.items() if patient.diagnostico==diagnostico}
+    def read_pacientes_doctor(self,doctor):
+        return {index: patient.__dict__ for index, patient in pacientes.items() if patient.doctor==doctor}
+    def read_pacientes_ci(self,ci):
+        return {index: patient.__dict__ for index, patient in pacientes.items() if patient.ci==ci}
     def update_paciente(self, index, data):
         if index in pacientes:
             paciente = pacientes[index]
@@ -143,13 +148,37 @@ class HospitalHandler(BaseHTTPRequestHandler):
             HTTPDataHandler.handle_response(self, 201, response_data.__dict__)
         else:
             HTTPDataHandler.handle_response(self, 404, {"Error": "Ruta no existente"})
-
+    
     def do_GET(self):
-        if self.path == "/pacientes":
-            response_data = self.controller.read_pacientes()
-            HTTPDataHandler.handle_response(self, 200, response_data)
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
+        if parsed_path.path == "/pacientes":
+            if "diagnostico" in query_params:
+                diagnostico = query_params["diagnostico"][0]
+                pacientes_filtrados = self.controller.read_pacientes_diagnostico(diagnostico)
+                if pacientes_filtrados != []:
+                    HTTPDataHandler.handle_response(self, 200, pacientes_filtrados)
+                else:
+                    HTTPDataHandler.handle_response(self, 204, [])
+            elif "doctor" in query_params:
+                doctor = query_params["doctor"][0]
+                pacientes_filtrados = self.controller.read_pacientes_doctor(doctor)
+                if pacientes_filtrados != []:
+                    HTTPDataHandler.handle_response(self, 200, pacientes_filtrados)
+                else:
+                    HTTPDataHandler.handle_response(self, 204, [])
+            else:
+                response_data=self.controller.read_pacientes()
+                HTTPDataHandler.handle_response(self, 200, response_data)
+        elif self.path.startswith("/pacientes/"):
+            ci = int(self.path.split("/")[-1])
+            paciente = self.controller.read_pacientes_ci(ci)
+            if paciente:
+                HTTPDataHandler.handle_response(self, 200, paciente)
+            else:
+                HTTPDataHandler.handle_response(self, 204, [])
         else:
-            HTTPDataHandler.handle_response(self, 404, {"Error": "Ruta no existente"})
+            HTTPDataHandler.handle_response(self, 204, {"Error":"Ruta no encontrada"})
 
     def do_PUT(self):
         if self.path.startswith("/pacientes/"):

@@ -1,5 +1,6 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+from urllib.parse import urlparse, parse_qs
 
 # Base de datos simulada de vehículos
 animales = {}
@@ -85,6 +86,10 @@ class ZooService:
         return {index: animal.__dict__ for index, animal in animales.items()}
     def list_animals_by_especie(self,species):
         return {index: animal.__dict__ for index, animal in animales.items() if animal.especie==species}
+    def list_animals_by_genero(self,genero):
+        return {index: animal.__dict__ for index, animal in animales.items() if animal.genero==genero}
+    def list_animals_by_id(self,id):
+        return {index: animal.__dict__ for index, animal in animales.items() if index==id}
     
     def update_animal(self, animal_id, data):
         if animal_id in animales:
@@ -129,13 +134,35 @@ class ZooRequestHandler(BaseHTTPRequestHandler):
             )
 
     def do_GET(self):
-        if self.path == "/animales":
-            response_data = self.zoo_service.list_animals()
-            HTTPDataHandler.handle_response(self, 200, response_data)
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
+        if parsed_path.path == "/animales":
+            if "especie" in query_params:
+                especie = query_params["especie"][0]
+                animales_filtrados = self.zoo_service.list_animals_by_especie(especie)
+                if animales_filtrados != []:
+                    HTTPDataHandler.handle_response(self, 200, animales_filtrados)
+                else:
+                    HTTPDataHandler.handle_response(self, 204, [])
+            elif "genero" in query_params:
+                genero = query_params["genero"][0]
+                animales_filtrados = self.zoo_service.list_animals_by_genero(genero)
+                if animales_filtrados != []:
+                    HTTPDataHandler.handle_response(self, 200, animales_filtrados)
+                else:
+                    HTTPDataHandler.handle_response(self, 204, [])
+            else:
+                response_data=self.zoo_service.list_animals()
+                HTTPDataHandler.handle_response(self, 200, response_data)
+        elif self.path.startswith("/animales/"):
+            id = int(self.path.split("/")[-1])
+            animal = self.zoo_service.list_animals_by_id(id)
+            if animal:
+                HTTPDataHandler.handle_response(self, 200, animal)
+            else:
+                HTTPDataHandler.handle_response(self, 204, [])
         else:
-            HTTPDataHandler.handle_response(
-                self, 404, {"message": "Ruta no encontrada"}
-            )
+            HTTPDataHandler.handle_response(self, 204, {"Error":"Ruta no encontrada"})
 
     def do_PUT(self):
         if self.path.startswith("/animales/"):
